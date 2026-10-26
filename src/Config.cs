@@ -120,6 +120,7 @@ public sealed class OutputConfig
     /// 設定ファイルを書き換えて切り替える（次の起動から）
     /// </summary>
     public string SendTo { get; set; } = "chatbox";
+    [JsonIgnore] public bool UseTts => string.Equals(SendTo?.Trim(), "tts", StringComparison.OrdinalIgnoreCase);
     /// <summary>vrc_osc.py のサーバー（SendTo が "tts" のとき）</summary>
     public string TtsServerUrl { get; set; } = "http://127.0.0.1:8765";
     /// <summary>vrc_osc.py に届かないとき、Chatbox へ直接送る</summary>

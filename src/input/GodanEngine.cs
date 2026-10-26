@@ -174,6 +174,14 @@ public sealed class GodanEngine
         return text;
     }
 
+    /// <summary>送れなかった文字列を入力欄に戻す。もう次を打ち始めていたら戻さない</summary>
+    public void Restore(string text)
+    {
+        if (Buffer.Length > 0 || Pending != null || Converting) return;
+        Committed = text;
+        Changed?.Invoke();
+    }
+
     /// <summary>
     /// カーソルを入力欄の index 文字目の前へ移す。未確定の文字はそのまま確定する（スマホと同じ）。
     /// </summary>

@@ -14,11 +14,12 @@ public sealed class Output
 
     /// <summary>
     /// vrc_osc.py の /send に送る（音声 + Chatbox）。
-    /// サーバーに繋がらなければ VRChat の Chatbox へ OSC で直接送る。
-    /// 戻り値は通知用の短い文。
+    /// サーバーに繋がらないときや Chatbox に出なかったときは、VRChat の Chatbox へ OSC で直接送る。
+    /// 戻り値は通知用の短い文。例外は投げない。
     /// </summary>
     public async Task<(bool ok, string message)> SendToTtsAsync(string text)
     {
+        bool ttsOk, vrcOk;
         try
         {
             var url = _cfg.TtsServerUrl.TrimEnd('/') + "/send";
@@ -29,28 +30,49 @@ public sealed class Output
             // 応答は {"tts": {"ok":..,"error":..}, "vrc": {"ok":..}} か {"ok": false, "error": ..}
             using var doc = System.Text.Json.JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
             var root = doc.RootElement;
-            if (root.TryGetProperty("error", out var topErr))
-            {
-                Log.Warn("TTSの送信に失敗: " + topErr.GetString());
-                return (false, "送信できません");
-            }
-            bool ttsOk = root.TryGetProperty("tts", out var tts) && tts.TryGetProperty("ok", out var t) && t.GetBoolean();
-            bool vrcOk = root.TryGetProperty("vrc", out var vrc) && vrc.TryGetProperty("ok", out var v) && v.GetBoolean();
-            if (ttsOk) return (true, "送信");
-            var why = tts.ValueKind == System.Text.Json.JsonValueKind.Object && tts.TryGetProperty("error", out var e) ? e.GetString() : "";
-            Log.Warn("TTSの送信に失敗: " + why);
-            return (vrcOk, vrcOk ? "Chatboxのみ送信" : "送信できません");
+            ttsOk = IsOk(root, "tts");
+            vrcOk = IsOk(root, "vrc");
+            if (!ttsOk) Log.Warn("TTSの送信に失敗: " + ErrorOf(root));
         }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+        catch (TaskCanceledException)
+        {
+            // 繋がったまま返事がない。向こうで Chatbox に出している途中かもしれないので、二重に送らない
+            Log.Warn("TTSサーバーの応答がありません");
+            return (false, "TTSの応答がありません");
+        }
+        catch (Exception e)
         {
             Log.Warn($"TTSサーバーに送れませんでした: {e.Message}");
-            if (_cfg.OscFallback)
-            {
-                SendChatbox(text);
-                return (true, "Chatboxのみ送信");
-            }
-            return (false, "TTSに接続できません");
+            ttsOk = vrcOk = false;
         }
+
+        if (vrcOk) return ttsOk ? (true, "送信") : (true, "Chatboxのみ送信");
+        if (!_cfg.OscFallback) return ttsOk ? (true, "読み上げのみ") : (false, "送信できません");
+        try
+        {
+            SendChatbox(text);
+            return (true, ttsOk ? "送信" : "Chatboxのみ送信");
+        }
+        catch (Exception e)
+        {
+            Log.Warn("Chatboxへの送信に失敗: " + e.Message);
+            return ttsOk ? (true, "読み上げのみ") : (false, "送信できません");
+        }
+    }
+
+    /// <summary>root[key].ok が true か。形が違っても例外にしない</summary>
+    static bool IsOk(System.Text.Json.JsonElement root, string key) =>
+        root.ValueKind == System.Text.Json.JsonValueKind.Object
+        && root.TryGetProperty(key, out var o) && o.ValueKind == System.Text.Json.JsonValueKind.Object
+        && o.TryGetProperty("ok", out var ok) && ok.ValueKind == System.Text.Json.JsonValueKind.True;
+
+    /// <summary>ログ用のエラー文。root.error か root.tts.error</summary>
+    static string ErrorOf(System.Text.Json.JsonElement root)
+    {
+        if (root.ValueKind != System.Text.Json.JsonValueKind.Object) return root.GetRawText();
+        if (root.TryGetProperty("error", out var e)) return e.ToString();
+        if (root.TryGetProperty("tts", out var t) && t.ValueKind == System.Text.Json.JsonValueKind.Object && t.TryGetProperty("error", out var te)) return te.ToString();
+        return "";
     }
 
     /// <summary>/chatbox/input [text, true, false] を送る</summary>

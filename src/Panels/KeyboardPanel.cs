@@ -29,7 +29,7 @@ public sealed class KeyboardPanel : Panel
 
     public bool PcMode { get; private set; }
     /// <summary>PC 以外の出力先の名前（ヘッダーの「出力」ボタンに出す）</summary>
-    public static string SendName => App.Config.Output.SendTo == "tts" ? "TTS" : "Chatbox";
+    public static string SendName => App.Config.Output.UseTts ? "TTS" : "Chatbox";
     public override string Title => "キーボード";
 
     bool _placed;
@@ -522,15 +522,11 @@ public sealed class KeyboardPanel : Panel
             return;
         }
         if (text.Length == 0) return;
-        if (App.Config.Output.SendTo == "tts")
+        if (App.Config.Output.UseTts)
         {
             // vrc_osc.py へ送って読み上げる（届かなければ Chatbox だけ）
             ShowNotice("送信中…", false);
-            _ = Task.Run(async () =>
-            {
-                var (ok, msg) = await App.Output.SendToTtsAsync(text);
-                App.Post(() => App.Notify(msg, !ok));
-            });
+            SendTts(text);
             return;
         }
         try
@@ -543,6 +539,22 @@ public sealed class KeyboardPanel : Panel
             Log.Warn("Chatboxへの送信に失敗: " + e.Message);
             App.Notify("送信できません", true);
         }
+    }
+
+    async void SendTts(string text)
+    {
+        (bool ok, string msg) r;
+        try { r = await App.Output.SendToTtsAsync(text); }
+        catch (Exception e)
+        {
+            Log.Warn("TTSへの送信に失敗: " + e.Message);
+            r = (false, "送信できません");
+        }
+        App.Post(() =>
+        {
+            if (!r.ok) _engine.Restore(text);
+            App.Notify(r.msg, !r.ok);
+        });
     }
 
     // ── 候補の並べ方 ──
