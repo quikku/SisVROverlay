@@ -1,6 +1,6 @@
 # GODANキーボードオーバーレイ（VR）
 
-SteamVRのオーバーレイとして、VRの中にGODAN配列のキーボードやPCの画面を出すアプリです。キーボードで打った文章はVRChatのChatboxに出ます。
+SteamVRのオーバーレイとして、VRの中にGODAN配列のキーボードやPCの画面を出すアプリです。キーボードで打った文章はVRChatのChatboxに出ます。設定を変えると、TTSツール（vrc_osc.py）に送って読み上げることもできます。
 
 ## 起動
 
@@ -9,6 +9,10 @@ VRChatのOSCを有効にしておきます（アクションメニューの「Op
 SteamVRを起動してから`run.bat`を実行します。`run.bat`が先でも、SteamVRが立ち上がるのを待ってから接続する作りです。.NETのインストールは要りません。
 
 SteamVRと一緒に自動で起動させるときは、SteamVRを起動した状態で`register_steamvr.bat`を一度実行します。登録を外すときは`unregister_steamvr.bat`を実行します。
+
+### TTSで読み上げる
+
+設定ファイル（`app\overlay_config.json`）の`output.sendTo`を`"tts"`にすると、「送信」した文章をTTSツールのvrc_osc.pyへ送って読み上げます。オーバーレイを起動し直すと切り替わります。読み上げるときは、vrc_osc.pyとEasy-Irodori-TTSも起動しておきます。
 
 ### 管理者権限
 
@@ -64,7 +68,7 @@ GODAN配列は、子音と母音のキーを順に押して打つ配列です。
 
 下線の付いた部分がまだ確定していない文字で、変換するのはこの部分だけです。打っている途中から変換候補が出て、候補を押すとその部分が確定し、続きを打てます。「変換」を押すと文節ごとに変換し、そのときの上の段は文節、下の段は候補です。「確定」で確定し、確定していない文字がないときに「変換」を押すと全角スペースが入ります。
 
-「送信」を押すと、文章がVRChatのChatboxに出ます。「出力」をPCにすると、送信の代わりにPCで選んでいるウィンドウへ文字を入力します。PCへの出力では、こちらでは変換せずに、打ったキーをそのままPCへ送ります。変換はPCのIMEが行い、「変換」はSpace、「送信」はEnter、削除のキーはBackspace、ヘッダーの「半/全」はIMEの切り替えになります。フリック入力の「か」はKとAのキーとして送ります。
+「送信」を押すと、文章がVRChatのChatboxに出ます。送信先をTTSにしているときは、vrc_osc.pyに送って読み上げ、Chatboxにも出します。vrc_osc.pyが起動していないときはChatboxにだけ送ります。「出力」をPCにすると、送信の代わりにPCで選んでいるウィンドウへ文字を入力します。PCへの出力では、こちらでは変換せずに、打ったキーをそのままPCへ送ります。変換はPCのIMEが行い、「変換」はSpace、「送信」はEnter、削除のキーはBackspace、ヘッダーの「半/全」はIMEの切り替えになります。フリック入力の「か」はKとAのキーとして送ります。
 
 ### QWERTY
 
@@ -111,6 +115,9 @@ Discordなどの通知が来ると、時計の上に8秒だけ表示します。
 | `desktop.showCursor` | マウスカーソルを画面のパネルに描くか |
 | `desktop.cursorScale` | 描くカーソルの大きさ（PCでの大きさに対する倍率） |
 | `desktop.touchMode` | トリガーをタッチとして送るか。`false`にするとマウスの左ボタンになる |
+| `output.sendTo` | 「送信」の送り先。`"chatbox"`（Chatboxへ直接）か`"tts"`（vrc_osc.pyへ送って読み上げ） |
+| `output.ttsServerUrl` | vrc_osc.pyのURL |
+| `output.oscFallback` | vrc_osc.pyに届かないとき、Chatboxへ直接送るか |
 | `output.oscHost` | VRChatのOSCの送り先 |
 | `output.oscPort` | VRChatのOSCのポート |
 | `converter.engine` | `"google"`（Google日本語入力のWeb API）か`"none"` |

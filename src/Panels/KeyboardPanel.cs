@@ -29,7 +29,7 @@ public sealed class KeyboardPanel : Panel
 
     public bool PcMode { get; private set; }
     /// <summary>PC 以外の出力先の名前（ヘッダーの「出力」ボタンに出す）</summary>
-    public const string SendName = "Chatbox";
+    public static string SendName => App.Config.Output.SendTo == "tts" ? "TTS" : "Chatbox";
     public override string Title => "キーボード";
 
     bool _placed;
@@ -522,6 +522,17 @@ public sealed class KeyboardPanel : Panel
             return;
         }
         if (text.Length == 0) return;
+        if (App.Config.Output.SendTo == "tts")
+        {
+            // vrc_osc.py へ送って読み上げる（届かなければ Chatbox だけ）
+            ShowNotice("送信中…", false);
+            _ = Task.Run(async () =>
+            {
+                var (ok, msg) = await App.Output.SendToTtsAsync(text);
+                App.Post(() => App.Notify(msg, !ok));
+            });
+            return;
+        }
         try
         {
             App.Output.SendChatbox(text);

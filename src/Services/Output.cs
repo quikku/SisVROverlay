@@ -10,6 +10,49 @@ public sealed class Output
 
     public Output(OutputConfig cfg) => _cfg = cfg;
 
+    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
+
+    /// <summary>
+    /// vrc_osc.py の /send に送る（音声 + Chatbox）。
+    /// サーバーに繋がらなければ VRChat の Chatbox へ OSC で直接送る。
+    /// 戻り値は通知用の短い文。
+    /// </summary>
+    public async Task<(bool ok, string message)> SendToTtsAsync(string text)
+    {
+        try
+        {
+            var url = _cfg.TtsServerUrl.TrimEnd('/') + "/send";
+            // vrc_osc.py は Content-Length の分だけ読むので、チャンク転送にならない StringContent で送る
+            var json = System.Text.Json.JsonSerializer.Serialize(new { text });
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            using var resp = await Http.PostAsync(url, content);
+            // 応答は {"tts": {"ok":..,"error":..}, "vrc": {"ok":..}} か {"ok": false, "error": ..}
+            using var doc = System.Text.Json.JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+            var root = doc.RootElement;
+            if (root.TryGetProperty("error", out var topErr))
+            {
+                Log.Warn("TTSの送信に失敗: " + topErr.GetString());
+                return (false, "送信できません");
+            }
+            bool ttsOk = root.TryGetProperty("tts", out var tts) && tts.TryGetProperty("ok", out var t) && t.GetBoolean();
+            bool vrcOk = root.TryGetProperty("vrc", out var vrc) && vrc.TryGetProperty("ok", out var v) && v.GetBoolean();
+            if (ttsOk) return (true, "送信");
+            var why = tts.ValueKind == System.Text.Json.JsonValueKind.Object && tts.TryGetProperty("error", out var e) ? e.GetString() : "";
+            Log.Warn("TTSの送信に失敗: " + why);
+            return (vrcOk, vrcOk ? "Chatboxのみ送信" : "送信できません");
+        }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+        {
+            Log.Warn($"TTSサーバーに送れませんでした: {e.Message}");
+            if (_cfg.OscFallback)
+            {
+                SendChatbox(text);
+                return (true, "Chatboxのみ送信");
+            }
+            return (false, "TTSに接続できません");
+        }
+    }
+
     /// <summary>/chatbox/input [text, true, false] を送る</summary>
     public void SendChatbox(string text)
     {

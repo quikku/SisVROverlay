@@ -82,7 +82,7 @@ public sealed class WatchConfig
 public sealed class KeyboardConfig
 {
     public float WidthMeters { get; set; } = 0.34f;
-    /// <summary>"chatbox"（VRChatのChatboxへ送信）か "pc"（PCへ文字入力）</summary>
+    /// <summary>起動時の出力。"pc"（PCへ文字入力）か、それ以外（output.sendTo の送信先へ送る）</summary>
     public string DefaultOutput { get; set; } = "chatbox";
     /// <summary>フリックと判定するレーザーの移動量（キー幅に対する割合）</summary>
     public float FlickThreshold { get; set; } = 0.28f;
@@ -115,6 +115,15 @@ public sealed class DesktopConfig
 
 public sealed class OutputConfig
 {
+    /// <summary>
+    /// 「送信」の送り先。"chatbox"（VRChat の Chatbox へ OSC で直接）か "tts"（vrc_osc.py へ送って読み上げ、Chatbox にも出す）。
+    /// 設定ファイルを書き換えて切り替える（次の起動から）
+    /// </summary>
+    public string SendTo { get; set; } = "chatbox";
+    /// <summary>vrc_osc.py のサーバー（SendTo が "tts" のとき）</summary>
+    public string TtsServerUrl { get; set; } = "http://127.0.0.1:8765";
+    /// <summary>vrc_osc.py に届かないとき、Chatbox へ直接送る</summary>
+    public bool OscFallback { get; set; } = true;
     public string OscHost { get; set; } = "127.0.0.1";
     public int OscPort { get; set; } = 9000;
 }
