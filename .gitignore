@@ -1,0 +1,12 @@
+# ビルドでできるもの
+app/
+src/bin/
+src/obj/
+*.old
+.vs/
+*.user
+
+# 実行中にできるもの（個人の設定とログ）
+overlay_config.json
+overlay_config.json.broken
+overlay.log
