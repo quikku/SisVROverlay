@@ -209,7 +209,8 @@ public sealed class MenuPanel : Panel
         int level = (int)MathF.Round(p.Curvature / 0.1f);
         PlaceRight(ref right, row, $"p:curve:{i}", level == 0 ? "平面" : $"曲面{level}", 120, level > 0, level == 0 ? "crop_landscape" : "panorama_horizontal");
         PlaceRight(ref right, row, $"p:hud:{i}", "HUD", 105, p.HudLocked, "head_mounted_device");
-        PlaceRight(ref right, row, $"p:show:{i}", "表示", 110, p.Visible, p.Visible ? "visibility" : "visibility_off");
+        PlaceRight(ref right, row, $"p:hand:{i}", p.AttachedTo is { } h ? Panel.HandName(h) : "手", 110, p.AttachedTo != null, "back_hand");
+        PlaceRight(ref right, row, $"p:show:{i}", "", 64, p.Visible, p.Visible ? "visibility" : "visibility_off");
         float nameW = right - row.Left - 20;
         _rows.Add((row, c =>
         {
@@ -317,8 +318,12 @@ public sealed class MenuPanel : Panel
         Invalidate();
     }
 
+    /// <summary>今押しているボタンを押した手</summary>
+    Hand _activeHand = Hand.Right;
+
     public override void OnRelease(Hand hand, Vector2 px)
     {
+        _activeHand = hand;
         var b = _pressed[(int)hand];
         _pressed[(int)hand] = null;
         Invalidate();
@@ -355,6 +360,11 @@ public sealed class MenuPanel : Panel
                 {
                     case "show": p.Toggle(); break;
                     case "hud": p.SetHud(!p.HudLocked, App.Input.HmdPose); break;
+                    case "hand":
+                        // 押した手とは反対の手に付ける。付けていれば外す
+                        if (!p.Visible) p.Show();
+                        p.AttachToHand(p.AttachedTo != null ? null : Panel.Other(_activeHand));
+                        break;
                     case "curve":
                         int level = ((int)MathF.Round(p.Curvature / 0.1f) + 1) % 4;
                         p.SetCurvature(level * 0.1f);

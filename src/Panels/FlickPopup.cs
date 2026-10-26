@@ -42,6 +42,7 @@ public sealed class FlickPopup : Panel
             (keyboard.PixH / 2f - keyRect.MidY) * metersPerPixel,
             0.004f);
         var world = local * keyboard.World;
+        _keyboard = keyboard;
         if (world != World || _hud != keyboard.HudLocked)
         {
             _hud = keyboard.HudLocked;
@@ -49,8 +50,17 @@ public sealed class FlickPopup : Panel
         }
     }
 
+    Panel? _keyboard;
+
     protected override void ApplyTransform()
     {
+        // 手に付けたキーボードはコントローラーについてくるので、こちらも同じコントローラーを基準に置く
+        if (_keyboard is { AttachedTo: not null } kb && App.Input.TryGetDevicePose(kb.AttachedDevice, out var device))
+        {
+            var hand = (World * device.Inverse()).ToHmd();
+            Ov?.SetOverlayTransformTrackedDeviceRelative(Handle, kb.AttachedDevice, ref hand);
+            return;
+        }
         if (_hud)
         {
             // 視界に固定したキーボードは頭についてくるので、こちらも頭を基準に置く

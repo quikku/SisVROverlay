@@ -177,6 +177,9 @@ float4 PSQ(VSOut i) : SV_Target
     /// <summary>Source に新しい画像を入れた</summary>
     protected void MarkFrame() => _frameDirty = true;
 
+    /// <summary>ツールバーを作ったときに付けていた手（メニューから付け外ししたら作り直す）</summary>
+    Hand? _toolbarHand;
+
     protected void BuildToolbar()
     {
         if (_toolbarH == 0) return;
@@ -192,7 +195,11 @@ float4 PSQ(VSOut i) : SV_Target
             return b;
         }
         AddToolbarButtons(Add);
-        x = _outW - (pad + w) * 2;
+        x = _outW - (pad + w) * 3;
+        var handButton = Add("hand", AttachedTo is { } attached ? HandName(attached) : "手に付ける");
+        handButton.Icon = "back_hand";
+        handButton.Active = AttachedTo != null;
+        _toolbarHand = AttachedTo;
         var lockButton = Add("lock", "ロック");
         lockButton.Active = Locked;
         lockButton.Icon = Locked ? "lock" : "lock_open";
@@ -307,6 +314,7 @@ float4 PSQ(VSOut i) : SV_Target
             ctx.OMSetRenderTargets((ID3D11RenderTargetView)null!);
             changed = true;
         }
+        if (AttachedTo != _toolbarHand) BuildToolbar();
         if (_toolbarDirty && _toolbar != null)
         {
             _toolbarDirty = false;
@@ -463,6 +471,11 @@ float4 PSQ(VSOut i) : SV_Target
         {
             case "lock":
                 Locked = !Locked;
+                BuildToolbar();
+                break;
+            case "hand":
+                // 押した手とは反対の手に付ける。付けていれば外す
+                AttachToHand(AttachedTo != null ? null : Other(hand));
                 BuildToolbar();
                 break;
             case "close":

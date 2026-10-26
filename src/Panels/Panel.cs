@@ -62,15 +62,75 @@ public abstract class Panel : IDisposable
     /// <summary>今見えている位置のまま、視界に固定する／外す</summary>
     public void SetHud(bool on, Matrix4x4 hmdPose)
     {
+        if (on) AttachedTo = null; // 手に付けていたら、その大きさと位置のまま視界に移す
         HudLocked = on;
         if (on) _hudRel = World * hmdPose.Inverse();
         _transformDirty = true;
     }
 
-    /// <summary>視界に固定中は、毎フレーム HMD の位置から当たり判定用の位置を計算する</summary>
-    public void HudUpdate(Matrix4x4 hmdPose)
+    /// <summary>手に付けている（コントローラーについてくる）。null なら付けていない</summary>
+    public Hand? AttachedTo { get; private set; }
+    Matrix4x4 _handRel;
+    uint _handDevice = OpenVR.k_unTrackedDeviceIndexInvalid;
+    float _widthBeforeAttach, _attachedWidth;
+
+    /// <summary>手に付けているコントローラー（フリックの候補を同じ手に付けるのに使う）</summary>
+    public uint AttachedDevice => AttachedTo != null ? _handDevice : OpenVR.k_unTrackedDeviceIndexInvalid;
+
+    public static Hand Other(Hand h) => h == Hand.Left ? Hand.Right : Hand.Left;
+    public static string HandName(Hand h) => h == Hand.Left ? "左手" : "右手";
+
+    /// <summary>手に付けたときの幅（m）。これより大きいパネルは縮める</summary>
+    const float HandWidthMeters = 0.3f;
+
+    /// <summary>
+    /// 手に付ける／外す。付けるときは手の上に自分の方へ向けて置き、大きければ縮める。
+    /// 外すときは縮めた大きさを戻して目の前に置く。
+    /// </summary>
+    public void AttachToHand(Hand? hand)
+    {
+        if (hand == AttachedTo) return;
+        if (hand is { } h)
+        {
+            var device = App.Input.Hands[(int)h].DeviceIndex;
+            if (!App.Input.TryGetDevicePose(device, out var devicePose))
+            {
+                App.Notify(HandName(h) + "のコントローラーが見つかりません", true);
+                return;
+            }
+            if (AttachedTo == null) _widthBeforeAttach = WidthMeters;
+            HudLocked = false;
+            if (WidthMeters > HandWidthMeters) SetWidth(HandWidthMeters);
+            _attachedWidth = WidthMeters;
+            var head = App.Input.HmdPose;
+            var pos = devicePose.Translation + Vector3.UnitY * (HeightMeters / 2 + 0.06f);
+            World = VrMath.FacingFrom(pos, head.Translation, head.Forward(), 25 * MathF.PI / 180);
+            _handRel = World * devicePose.Inverse();
+            _handDevice = device;
+            AttachedTo = h;
+        }
+        else
+        {
+            AttachedTo = null;
+            // 付けている間に大きさを変えていなければ、元の大きさに戻す
+            if (MathF.Abs(WidthMeters - _attachedWidth) < 1e-4f) SetWidth(_widthBeforeAttach);
+            PlaceInFront();
+        }
+        _transformDirty = true;
+    }
+
+    /// <summary>
+    /// 視界に固定中や手に付けている間は、毎フレーム HMD やコントローラーの位置から当たり判定用の位置を計算する
+    /// </summary>
+    public void FollowUpdate(Matrix4x4 hmdPose)
     {
         if (HudLocked) World = _hudRel * hmdPose;
+        else if (AttachedTo is { } h)
+        {
+            var device = App.Input.Hands[(int)h].DeviceIndex;
+            if (device != _handDevice) { _handDevice = device; _transformDirty = true; }
+            if (App.Input.TryGetDevicePose(device, out var devicePose)) World = _handRel * devicePose;
+        }
     }
 
     /// <summary>VRなしで描画だけ確かめるとき（--preview）は true。OpenVR を呼ばない</summary>
@@ -212,6 +272,13 @@ public abstract class Panel : IDisposable
             World = world;
             _transformDirty = true;
         }
+        else if (AttachedTo != null)
+        {
+            if (!App.Input.TryGetDevicePose(_handDevice, out var devicePose)) return;
+            _handRel = world * devicePose.Inverse();
+            World = world;
+            _transformDirty = true;
+        }
         else SetWorld(world);
     }
 
@@ -291,6 +358,12 @@ public abstract class Panel : IDisposable
         {
             var rel = _hudRel.ToHmd();
             Ov?.SetOverlayTransformTrackedDeviceRelative(Handle, OpenVR.k_unTrackedDeviceIndex_Hmd, ref rel);
+            return;
+        }
+        if (AttachedTo != null && _handDevice != OpenVR.k_unTrackedDeviceIndexInvalid)
+        {
+            var rel = _handRel.ToHmd();
+            Ov?.SetOverlayTransformTrackedDeviceRelative(Handle, _handDevice, ref rel);
             return;
         }
         var m = World.ToHmd();

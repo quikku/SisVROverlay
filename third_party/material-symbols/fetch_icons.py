@@ -18,7 +18,7 @@ NAMES = [
     # 共通
     "close", "lock", "lock_open", "chevron_left", "chevron_right", "refresh", "add", "remove",
     # パネルの一覧
-    "visibility", "visibility_off", "head_mounted_device", "panorama_horizontal", "crop_landscape",
+    "visibility", "visibility_off", "head_mounted_device", "panorama_horizontal", "crop_landscape", "back_hand",
     # キーボード
     "backspace", "send", "chat", "record_voice_over", "computer", "delete_sweep", "language",
     # PCの画面

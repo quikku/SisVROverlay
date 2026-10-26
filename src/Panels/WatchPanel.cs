@@ -107,7 +107,7 @@ public sealed class WatchPanel : Panel
                 p.Show();
                 // プレイスペースを動かしてずれていても、頭の位置から同じ方角・同じ距離の所に戻す。
                 // 向きは戻さずに自分の方へ向ける（手前への傾きだけは元のまま）
-                if (_cfg.RestoreRelativePosition && !p.HudLocked && p.HeadRelative is { } rel)
+                if (_cfg.RestoreRelativePosition && !p.HudLocked && p.AttachedTo == null && p.HeadRelative is { } rel)
                 {
                     var pos = rel.Translation + head.Translation;
                     float tilt = MathF.Asin(Math.Clamp(rel.M32, -1f, 1f));
@@ -225,7 +225,7 @@ public sealed class WatchPanel : Panel
             case "menu": App.Menu.Toggle(); break;
             case "summon":
                 foreach (var p in App.Panels)
-                    if (p != this && p.Visible) p.PlaceInFront();
+                    if (p != this && p.Visible && p.AttachedTo == null) p.PlaceInFront();
                 break;
         }
     }

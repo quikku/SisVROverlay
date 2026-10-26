@@ -377,7 +377,7 @@ public static class Program
                 var panels = App.Panels.ToArray();
                 foreach (var p in panels)
                 {
-                    p.HudUpdate(input.HmdPose);
+                    p.FollowUpdate(input.HmdPose);
                     p.Update(now, dt);
                 }
                 App.Toast?.Update(now, dt);
@@ -543,6 +543,7 @@ public static class Program
         foreach (var p in panels)
         {
             if (p is WatchPanel w && w.AttachedHand == hand) continue; // 時計を付けた手からは押さない
+            if (p.AttachedTo == hand) continue; // 手に付けたパネルも同じ
             if (p.HitTest(origin, dir, out var px, out var d, out _) && d < bestDist)
             {
                 best = p; bestPx = px; bestDist = d;
