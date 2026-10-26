@@ -193,8 +193,10 @@ float4 PSQ(VSOut i) : SV_Target
         }
         AddToolbarButtons(Add);
         x = _outW - (pad + w) * 2;
-        Add("lock", "ロック").Active = Locked;
-        Add("close", "閉じる");
+        var lockButton = Add("lock", "ロック");
+        lockButton.Active = Locked;
+        lockButton.Icon = Locked ? "lock" : "lock_open";
+        Add("close", "閉じる").Icon = "close";
         _toolbarDirty = true;
     }
 
@@ -313,8 +315,10 @@ float4 PSQ(VSOut i) : SV_Target
                 c.Clear(Ui.Bg);
                 using var c2 = new SKAutoCanvasRestore(c);
                 c.Translate(0, -_outH);
+                ButtonFx.Begin(this);
                 foreach (var b in _buttons)
                     b.Draw(c, IsHover(b), _pressedButton[0] == b || _pressedButton[1] == b, _toolbarH * 0.36f, _toolbarH * 0.2f);
+                if (ButtonFx.End()) _toolbarDirty = true;
             }
             UploadBitmap(_toolbar, _outH);
             changed = true;

@@ -37,21 +37,23 @@ public sealed class WatchPanel : Panel
 
         // メディア操作の段
         string[] media = ["prev", "play", "next", "voldown", "volup"];
+        string[] mediaIcons = ["skip_previous_fill1", "play_arrow_fill1", "skip_next_fill1", "volume_down_fill1", "volume_up_fill1"];
         float mw = (W - Pad * 2 - Gap * 4) / 5f, my = 140, mh = 66;
         for (int i = 0; i < media.Length; i++)
         {
             float x = Pad + i * (mw + Gap);
-            _buttons.Add(new UiButton { Id = media[i], Label = "", Rect = new SKRect(x, my, x + mw, my + mh) });
+            _buttons.Add(new UiButton { Id = media[i], Label = "", Icon = mediaIcons[i], Rect = new SKRect(x, my, x + mw, my + mh) });
         }
 
         // パネルの段
         string[] ids = ["keyboard", "desktop", "menu", "summon"];
         string[] labels = ["キーボード", "デスクトップ", "メニュー", "手前へ"];
+        string[] icons = ["keyboard", "desktop_windows", "menu", "center_focus_strong"];
         float bw = (W - Pad * 2 - Gap * (ids.Length - 1)) / ids.Length, by = my + mh + Gap, bh = H - by - Pad;
         for (int i = 0; i < ids.Length; i++)
         {
             float x = Pad + i * (bw + Gap);
-            _buttons.Add(new UiButton { Id = ids[i], Label = labels[i], Rect = new SKRect(x, by, x + bw, by + bh) });
+            _buttons.Add(new UiButton { Id = ids[i], Label = labels[i], Icon = icons[i], Rect = new SKRect(x, by, x + bw, by + bh) });
         }
     }
 
@@ -261,15 +263,8 @@ public sealed class WatchPanel : Panel
         {
             bool hover = (_hover[0] is { } a && b.Contains(a)) || (_hover[1] is { } d && b.Contains(d));
             bool pressed = _pressed[0] == b || _pressed[1] == b;
+            if (b.Id == "play") b.Icon = App.Media.Playing ? "pause_fill1" : "play_arrow_fill1";
             b.Draw(c, hover, pressed, 24, 18);
-            switch (b.Id)
-            {
-                case "prev": Icons.Previous(c, b.Rect, Ui.Text); break;
-                case "play": if (App.Media.Playing) Icons.Pause(c, b.Rect, Ui.Text); else Icons.Play(c, b.Rect, Ui.Text); break;
-                case "next": Icons.Next(c, b.Rect, Ui.Text); break;
-                case "voldown": Icons.Speaker(c, b.Rect, Ui.Text, plus: false); break;
-                case "volup": Icons.Speaker(c, b.Rect, Ui.Text, plus: true); break;
-            }
         }
     }
 }

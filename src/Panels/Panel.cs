@@ -244,7 +244,9 @@ public abstract class Panel : IDisposable
             using (var canvas = new SKCanvas(_bitmap))
             {
                 canvas.Clear(SKColors.Transparent);
+                ButtonFx.Begin(this);
                 Draw(canvas);
+                if (ButtonFx.End()) _dirty = true; // ボタンの変化の途中は次のフレームも描く
             }
             UploadBitmap(_bitmap, 0);
             SubmitTexture();

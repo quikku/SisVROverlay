@@ -133,4 +133,4 @@ Discordなどの通知が来ると、時計の上に8秒だけ表示します。
 
 ## 開発
 
-C#（.NET 8）で書いています。OpenVRは`third_party\openvr`（v2.15.6）、描画はSkiaSharpとDirect3D11（Vortice）、音量はNAudioを使います。ソースは`src\`にあり、変更したら`build.bat`で`app\`を作り直します。ビルドには.NET 8 SDKが要ります。リポジトリには`app\`が入っていないので、取ってきたら最初に`build.bat`を実行します。`app\GodanOverlay.exe --preview <出力フォルダ>`を実行すると、VRなしで各パネルの見た目をPNGに書き出せます。
+C#（.NET 8）で書いています。OpenVRは`third_party\openvr`（v2.15.6）、描画はSkiaSharpとDirect3D11（Vortice）、音量はNAudioを使います。ボタンのアイコンはGoogleのMaterial Symbols（Apache License 2.0）で、`third_party\material-symbols\fetch_icons.py`が`src\Panels\IconData.cs`を作ります。アイコンを足すときは、このスクリプトの一覧に名前を書き足して実行します。ソースは`src\`にあり、変更したら`build.bat`で`app\`を作り直します。ビルドには.NET 8 SDKが要ります。リポジトリには`app\`が入っていないので、取ってきたら最初に`build.bat`を実行します。`app\GodanOverlay.exe --preview <出力フォルダ>`を実行すると、VRなしで各パネルの見た目をPNGに書き出せます。

@@ -128,9 +128,9 @@ public sealed class DesktopPanel : CapturePanel
     {
         // モニターが1枚なら、切り替えも追加も出さない
         if (_monitorCount < 2) return;
-        add("monitor", $"モニター {Monitor + 1}/{_monitorCount}");
+        add("monitor", $"モニター {Monitor + 1}/{_monitorCount}").Icon = "monitor";
         // まだ出していないモニターがあれば、そのパネルを足せる
-        if (NextFreeMonitor() >= 0) add("addmonitor", "モニター追加");
+        if (NextFreeMonitor() >= 0) add("addmonitor", "モニター追加").Icon = "add_to_queue";
     }
 
     protected override bool OnToolbarButton(string id)

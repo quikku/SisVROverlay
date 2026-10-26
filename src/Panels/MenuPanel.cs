@@ -142,13 +142,13 @@ public sealed class MenuPanel : Panel
 
         // ヘッダー：タブ・ロック・閉じる
         float x = Pad, y = Pad;
-        foreach (var (tab, label) in new[] { (Tab.Panels, "パネル"), (Tab.Windows, "ウィンドウ"), (Tab.Volume, "音量"), (Tab.Settings, "設定") })
+        foreach (var (tab, label, icon) in new[] { (Tab.Panels, "パネル", "layers"), (Tab.Windows, "ウィンドウ", "select_window"), (Tab.Volume, "音量", "volume_up"), (Tab.Settings, "設定", "settings") })
         {
-            _buttons.Add(new UiButton { Id = "tab:" + tab, Label = label, Rect = new SKRect(x, y, x + 128, y + HeaderH), Active = _tab == tab });
+            _buttons.Add(new UiButton { Id = "tab:" + tab, Label = label, Icon = icon, Rect = new SKRect(x, y, x + 128, y + HeaderH), Active = _tab == tab });
             x += 128 + Gap;
         }
-        _buttons.Add(new UiButton { Id = "close", Label = "×", Rect = new SKRect(W - Pad - 64, y, W - Pad, y + HeaderH) });
-        _buttons.Add(new UiButton { Id = "lock", Label = "ロック", Rect = new SKRect(W - Pad - 64 - Gap - 110, y, W - Pad - 64 - Gap, y + HeaderH), Active = Locked });
+        _buttons.Add(new UiButton { Id = "close", Label = "", Icon = "close", Rect = new SKRect(W - Pad - 64, y, W - Pad, y + HeaderH) });
+        _buttons.Add(new UiButton { Id = "lock", Label = "ロック", Icon = Locked ? "lock" : "lock_open", Rect = new SKRect(W - Pad - 64 - Gap - 110, y, W - Pad - 64 - Gap, y + HeaderH), Active = Locked });
 
         int count = _tab switch
         {
@@ -178,13 +178,13 @@ public sealed class MenuPanel : Panel
         float fy = H - Pad - FooterH;
         if (pages > 1)
         {
-            _buttons.Add(new UiButton { Id = "prev", Label = "◀", Rect = new SKRect(W / 2f - 200, fy, W / 2f - 90, fy + FooterH) });
-            _buttons.Add(new UiButton { Id = "next", Label = "▶", Rect = new SKRect(W / 2f + 90, fy, W / 2f + 200, fy + FooterH) });
+            _buttons.Add(new UiButton { Id = "prev", Label = "", Icon = "chevron_left", Rect = new SKRect(W / 2f - 200, fy, W / 2f - 90, fy + FooterH) });
+            _buttons.Add(new UiButton { Id = "next", Label = "", Icon = "chevron_right", Rect = new SKRect(W / 2f + 90, fy, W / 2f + 200, fy + FooterH) });
             _rows.Add((new SKRect(W / 2f - 90, fy, W / 2f + 90, fy + FooterH),
                 c => Ui.TextCenter(c, $"{_page + 1} / {pages}", new SKRect(W / 2f - 90, fy, W / 2f + 90, fy + FooterH), 26, Ui.Muted)));
         }
         if (_tab == Tab.Windows)
-            _buttons.Add(new UiButton { Id = "refresh", Label = "更新", Rect = new SKRect(Pad, fy, Pad + 140, fy + FooterH) });
+            _buttons.Add(new UiButton { Id = "refresh", Label = "更新", Icon = "refresh", Rect = new SKRect(Pad, fy, Pad + 140, fy + FooterH) });
         if (count == 0)
         {
             var empty = _tab == Tab.Windows ? "ウィンドウなし" : _tab == Tab.Volume ? "再生中のアプリなし" : "";
@@ -193,10 +193,10 @@ public sealed class MenuPanel : Panel
     }
 
     // 右から順にボタンを置き、残りの左側を名前の欄にする
-    float PlaceRight(ref float right, SKRect row, string id, string label, float w, bool active = false)
+    float PlaceRight(ref float right, SKRect row, string id, string label, float w, bool active = false, string? icon = null)
     {
         var r = new SKRect(right - w, row.Top + 8, right, row.Bottom - 8);
-        _buttons.Add(new UiButton { Id = id, Label = label, Rect = r, Active = active });
+        _buttons.Add(new UiButton { Id = id, Label = label, Icon = icon, Rect = r, Active = active });
         right -= w + Gap;
         return right;
     }
@@ -205,11 +205,11 @@ public sealed class MenuPanel : Panel
     {
         var p = _panelRows[i];
         float right = row.Right - 10;
-        if (p.Closable) PlaceRight(ref right, row, $"p:close:{i}", "×", 64);
+        if (p.Closable) PlaceRight(ref right, row, $"p:close:{i}", "", 64, icon: "close");
         int level = (int)MathF.Round(p.Curvature / 0.1f);
-        PlaceRight(ref right, row, $"p:curve:{i}", level == 0 ? "平面" : $"曲面{level}", 110, level > 0);
-        PlaceRight(ref right, row, $"p:hud:{i}", "HUD", 90, p.HudLocked);
-        PlaceRight(ref right, row, $"p:show:{i}", "表示", 100, p.Visible);
+        PlaceRight(ref right, row, $"p:curve:{i}", level == 0 ? "平面" : $"曲面{level}", 120, level > 0, level == 0 ? "crop_landscape" : "panorama_horizontal");
+        PlaceRight(ref right, row, $"p:hud:{i}", "HUD", 105, p.HudLocked, "head_mounted_device");
+        PlaceRight(ref right, row, $"p:show:{i}", "表示", 110, p.Visible, p.Visible ? "visibility" : "visibility_off");
         float nameW = right - row.Left - 20;
         _rows.Add((row, c =>
         {
@@ -238,10 +238,10 @@ public sealed class MenuPanel : Panel
         if (s.Step)
         {
             // 右から ＋ / 値 / −
-            _buttons.Add(new UiButton { Id = $"s:{i}:+", Label = "＋", Rect = new SKRect(right - 64, top, right, bottom) });
+            _buttons.Add(new UiButton { Id = $"s:{i}:+", Label = "", Icon = "add", Rect = new SKRect(right - 64, top, right, bottom) });
             var value = new SKRect(right - 64 - Gap - 130, top, right - 64 - Gap, bottom);
             float minus = value.Left - Gap;
-            _buttons.Add(new UiButton { Id = $"s:{i}:-", Label = "−", Rect = new SKRect(minus - 64, top, minus, bottom) });
+            _buttons.Add(new UiButton { Id = $"s:{i}:-", Label = "", Icon = "remove", Rect = new SKRect(minus - 64, top, minus, bottom) });
             nameW = minus - 64 - row.Left - 30;
             _rows.Add((row, c =>
             {
@@ -272,11 +272,11 @@ public sealed class MenuPanel : Panel
         float top = row.Top + 8, bottom = row.Bottom - 8;
         float nameW = 200;
         float x = row.Left + 18 + nameW + Gap;
-        _buttons.Add(new UiButton { Id = $"v:mute:{i}", Label = "ミュート", Rect = new SKRect(x, top, x + 110, bottom), Active = muted });
+        _buttons.Add(new UiButton { Id = $"v:mute:{i}", Label = "", Icon = muted ? "volume_off_fill1" : "volume_up_fill1", Rect = new SKRect(x, top, x + 110, bottom), Active = muted });
         x += 110 + Gap;
-        _buttons.Add(new UiButton { Id = $"v:down:{i}", Label = "−", Rect = new SKRect(x, top, x + 64, bottom) });
+        _buttons.Add(new UiButton { Id = $"v:down:{i}", Label = "", Icon = "remove", Rect = new SKRect(x, top, x + 64, bottom) });
         x += 64 + Gap;
-        _buttons.Add(new UiButton { Id = $"v:up:{i}", Label = "＋", Rect = new SKRect(row.Right - 10 - 64, top, row.Right - 10, bottom) });
+        _buttons.Add(new UiButton { Id = $"v:up:{i}", Label = "", Icon = "add", Rect = new SKRect(row.Right - 10 - 64, top, row.Right - 10, bottom) });
         var bar = new SKRect(x, row.Top + 22, row.Right - 10 - 64 - Gap, row.Bottom - 22);
         _rows.Add((row, c =>
         {
@@ -401,12 +401,14 @@ public sealed class MenuPanel : Panel
         foreach (var b in _buttons)
         {
             bool hover = (_hover[0] is { } a && b.Contains(a)) || (_hover[1] is { } d && b.Contains(d));
-            bool pressed = _pressed[0] == b || _pressed[1] == b;
+            // 描くたびにボタンを作り直すので、押しているボタンは Id で見る
+            bool pressed = _pressed[0]?.Id == b.Id || _pressed[1]?.Id == b.Id;
             if (b.Id.StartsWith("w:"))
             {
                 // ウィンドウの行は文字を自前で描くので枠だけ
-                var fill = pressed ? new SKColor(0, 212, 255, 90) : hover ? Ui.PanelHover : Ui.Panel;
-                Ui.RoundRect(c, b.Rect, 14, fill, b.Active || hover ? Ui.Accent : Ui.Border, 2);
+                var look = ButtonFx.Style(b, hover, pressed);
+                ButtonFx.Glow(c, b.Rect, 14, look);
+                Ui.RoundRect(c, b.Rect, 14, look.Fill, look.Border, 2);
                 continue;
             }
             b.Draw(c, hover, pressed, 26, 14);

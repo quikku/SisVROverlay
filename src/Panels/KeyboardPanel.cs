@@ -92,14 +92,14 @@ public sealed class KeyboardPanel : Panel
                 float x = Pad + c * (colW + Gap);
                 float y = GridTop + r * (rowH + Gap);
                 var rect = new SKRect(x, y, x + colW, y + rowH * span + Gap * (span - 1));
-                _keys.Add(new UiButton { Id = id, Label = KeyLabel(id), Rect = rect, Primary = id == "#send" });
+                _keys.Add(new UiButton { Id = id, Label = KeyLabel(id), Icon = KeyIcon(id), Rect = rect, Primary = id == "#send" });
             }
         }
     }
 
     static string KeyLabel(string id) => id switch
     {
-        "#bs" => "⌫",
+        "#bs" => "",
         "#convert" => "変換",
         "#send" => "送信",
         "#small" => "゛゜小",
@@ -107,20 +107,28 @@ public sealed class KeyboardPanel : Panel
         _ => id.ToUpperInvariant(),
     };
 
+    static string? KeyIcon(string id) => id switch
+    {
+        "#bs" => "backspace",
+        "#send" => "send",
+        _ => null,
+    };
+
     void BuildHeader()
     {
         _header.Clear();
         float y = Pad, h = HeaderH;
         float right = W - Pad;
-        _header.Add(new UiButton { Id = "close", Label = "×", Rect = new SKRect(right - 64, y, right, y + h) });
+        _header.Add(new UiButton { Id = "close", Label = "", Icon = "close", Rect = new SKRect(right - 64, y, right, y + h) });
         right -= 64 + Gap;
-        _header.Add(new UiButton { Id = "clear", Label = PcMode ? "半/全" : "全消去", Rect = new SKRect(right - 120, y, right, y + h) });
+        _header.Add(new UiButton { Id = "clear", Label = PcMode ? "半/全" : "全消去", Icon = PcMode ? "language" : "delete_sweep", Rect = new SKRect(right - 120, y, right, y + h) });
         right -= 120 + Gap;
-        _header.Add(new UiButton { Id = "mode", Label = PcMode ? "出力: PC" : "出力: " + SendName, Rect = new SKRect(right - 220, y, right, y + h), Active = PcMode });
+        string modeIcon = PcMode ? "computer" : App.Config.Output.UseTts ? "record_voice_over" : "chat";
+        _header.Add(new UiButton { Id = "mode", Label = PcMode ? "出力: PC" : "出力: " + SendName, Icon = modeIcon, Rect = new SKRect(right - 220, y, right, y + h), Active = PcMode });
         right -= 220 + Gap;
-        _header.Add(new UiButton { Id = "lock", Label = "ロック", Rect = new SKRect(right - 100, y, right, y + h), Active = Locked });
+        _header.Add(new UiButton { Id = "lock", Label = "ロック", Icon = Locked ? "lock" : "lock_open", Rect = new SKRect(right - 100, y, right, y + h), Active = Locked });
         string style = _cfg.Style switch { "flick" => "フリック", "qwerty" => "QWERTY", _ => "GODAN" };
-        _header.Add(new UiButton { Id = "style", Label = style, Rect = new SKRect(Pad, y, Math.Min(right - 100 - Gap, Pad + 220), y + h) });
+        _header.Add(new UiButton { Id = "style", Label = style, Icon = "keyboard", Rect = new SKRect(Pad, y, Math.Min(right - 100 - Gap, Pad + 220), y + h) });
     }
 
     void ToggleStyle()
@@ -455,8 +463,7 @@ public sealed class KeyboardPanel : Panel
         var bottom = parts[1].Rect;
         bool hover = parts.Any(IsHover);
         bool pressed = _pressed[0]?.Id == b.Id || _pressed[1]?.Id == b.Id;
-        SKColor fill = pressed ? new SKColor(0, 212, 255, 90) : hover ? Ui.PanelHover : Ui.Panel;
-        SKColor border = hover || pressed ? Ui.Accent : Ui.Border;
+        var look = ButtonFx.Style(b, hover, pressed);
         using var a = new SKPath();
         a.AddRoundRect(top, 12, 12);
         using var bpath = new SKPath();
@@ -466,10 +473,11 @@ public sealed class KeyboardPanel : Panel
         joint.AddRect(new SKRect(Math.Max(top.Left, bottom.Left), top.Bottom - 12, Math.Min(top.Right, bottom.Right), bottom.Top + 12));
         using var both = a.Op(bpath, SKPathOp.Union);
         using var shape = both.Op(joint, SKPathOp.Union);
-        using (var f = new SKPaint { Color = fill, IsAntialias = true }) c.DrawPath(shape, f);
-        using (var st = new SKPaint { Color = border, IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 3 }) c.DrawPath(shape, st);
+        ButtonFx.Glow(c, path => path.AddPath(shape), look);
+        using (var f = new SKPaint { Color = look.Fill, IsAntialias = true }) c.DrawPath(shape, f);
+        using (var st = new SKPaint { Color = look.Border, IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 3 }) c.DrawPath(shape, st);
         // 文字は上下が重なっている幅の真ん中に
-        Ui.TextCenter(c, label, new SKRect(Math.Max(top.Left, bottom.Left), top.Top, Math.Min(top.Right, bottom.Right), bottom.Bottom), 24, Ui.Text, bold: true);
+        Ui.TextCenter(c, label, new SKRect(Math.Max(top.Left, bottom.Left), top.Top, Math.Min(top.Right, bottom.Right), bottom.Bottom), 24, look.Text, bold: true);
     }
 
     /// <summary>IME の日本語入力と同じく、よく使う記号は全角にする</summary>
@@ -482,6 +490,7 @@ public sealed class KeyboardPanel : Panel
         var mod = ModOf(k.Id);
         b.Label = shift && k.ShiftLabel != null ? k.ShiftLabel : k.Label;
         b.Active = mod.Length > 0 && _mods.Contains(mod);
+        if (k.Id == "q:bs") { b.Label = ""; b.Icon = "backspace"; }
         float size = k.Label.Length > 2 || k.Label.Any(ch => ch > 0x7F && ch is not ('¥' or '＼' or '▲' or '▼' or '◀' or '▶' or '⌫')) ? 24 : 34;
         b.Draw(c, IsHover(b), IsPressed(b), size, 12);
         // Shift で出る文字を左上に小さく
